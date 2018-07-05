@@ -1,7 +1,7 @@
 DROP DATABASE IF EXISTS poketracker;
 CREATE DATABASE poketracker;
 
-\c welltokchallenge;
+\c poketracker;
 
 DROP TABLE IF EXISTS pokemon;
 CREATE TABLE pokemon (
