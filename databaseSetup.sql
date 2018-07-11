@@ -1,7 +1,7 @@
-DROP DATABASE IF EXISTS poketracker;
-CREATE DATABASE poketracker;
+-- DROP DATABASE IF EXISTS poketracker;
+-- CREATE DATABASE poketracker;
 
-\c poketracker;
+-- \c poketracker;
 
 DROP TABLE IF EXISTS pokemon;
 CREATE TABLE pokemon (
