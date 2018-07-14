@@ -1,10 +1,29 @@
 import React from 'react';
 import { Button, Image, Text, StyleSheet, View } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { map } from 'lodash';
 import PropTypes from 'prop-types';
 
 export default function PokemonCard(props) {
   const { pokemon } = props;
+  /* eslint-disable object-property-newline */
+  // mapping of Pokemon types to their associated hex color codes
+  const typeColors = {
+    Normal: '#A8A878', Fire: '#F08030', Fighting: '#C03028', Water: '#6890F0', Flying: '#A890F0',
+    Grass: '#78C850', Poison: '#A59', Electric: '#F8D030', Ground: '#E0C068',
+    Psychic: '#F59', Rock: '#B8A038', Ice: '#98D8D8', Bug: '#A8B820', Dragon: '#7038F8',
+    Ghost: '#705898', Dark: '#705848', Steel: '#B8B8D0', Fairy: '#E9E',
+  };
+  /* eslint-enable object-property-newline */
+
+  // maps each of the Pokemon's types to a type style button
+  const types = map(pokemon.types, type => (
+    // uses the type colors map to determine the color of the current type
+    <View style={[styles.type, { backgroundColor: typeColors[type] }]} key={type}>
+      <Text style={styles.typeText}>
+        {type}
+      </Text>
+    </View>
+  ));
 
   return (
     <View style={styles.card}>
@@ -13,6 +32,9 @@ export default function PokemonCard(props) {
         <Text style={styles.cardText}>
           {pokemon.name}
         </Text>
+        <View style={styles.typesContainer}>
+          {types}
+        </View>
         <View style={{ margin: 10 }}>
           <Button title="Pokedex" onPress={() => props.handleClick(props.pokemon.id)} style={styles.cardButton} />
         </View>
@@ -42,5 +64,27 @@ const styles = StyleSheet.create({
     marginRight: 'auto',
   },
   cardButton: {
+  },
+  typesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  type: {
+    width: 70,
+    margin: 5,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  typeText: {
+    fontFamily: 'HelveticaNeue',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
