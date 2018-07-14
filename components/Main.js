@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
-import _ from 'lodash';
+import { Alert, Platform, StyleSheet, Text, ToastAndroid, View } from 'react-native';
+import { find } from 'lodash';
 import PokemonCard from './PokemonCard';
 import SearchForm from './SearchForm';
 
@@ -33,14 +33,7 @@ export default class Main extends React.Component {
   }
 
   updatePokedex(id) {
-    // @TODO - remove and replace this with updating action
-    Alert.alert(
-      'Pokedex Action',
-      `Clicked on button. Pokemon ID = ${id}`,
-      [
-        { text: 'OK', onPress: () => console.log('OK pressed') },
-      ]
-    );
+    ToastAndroid.show(`Clicked button for Pokemon with ID = ${id}`, ToastAndroid.SHORT);
   }
 
   render() {
@@ -55,7 +48,7 @@ export default class Main extends React.Component {
             handleChange={this.updateDisplayedPokemon.bind(this)}
           />
           <PokemonCard
-            pokemon={_.find(pokemons, { id: displayedPokemonId })}
+            pokemon={find(pokemons, { id: displayedPokemonId })}
             handleClick={this.updatePokedex.bind(this)}
           />
         </View>

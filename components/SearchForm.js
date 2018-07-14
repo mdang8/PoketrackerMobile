@@ -1,6 +1,6 @@
 import React from 'react';
 import { Picker, StyleSheet, View } from 'react-native';
-import _ from 'lodash';
+import { map, padStart, sortBy } from 'lodash';
 import PropTypes from 'prop-types';
 
 export default function SearchForm(props) {
@@ -23,10 +23,10 @@ export default function SearchForm(props) {
 // Populates the select input dropdown with the Pokemon names and ID's.
 function populateSelect(pokemons) {
   // sorts the list of Pokemon by their ID
-  const pokemonList = pokemons.sort((a, b) => a.id - b.id);
-  const options = pokemonList.map((pokemon) => {
+  const pokemonList = sortBy(pokemons, ['id']);
+  const options = map(pokemonList, (pokemon) => {
     // pads the ID string with 0's
-    let paddedId = _.padStart(pokemon.id.toString(), 3, '0');
+    let paddedId = padStart(pokemon.id.toString(), 3, '0');
     return <Picker.Item label={`${paddedId} - ${pokemon.name}`} value={pokemon.id} key={pokemon.id} />;
   });
 
