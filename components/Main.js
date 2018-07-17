@@ -32,10 +32,6 @@ export default class Main extends React.Component {
     });
   }
 
-  updatePokedex(id) {
-    ToastAndroid.show(`Clicked button for Pokemon with ID = ${id}`, ToastAndroid.SHORT);
-  }
-
   render() {
     const { pokemons, displayedPokemonId } = this.state;
     const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
@@ -47,10 +43,7 @@ export default class Main extends React.Component {
             currentId={displayedPokemonId}
             handleChange={this.updateDisplayedPokemon.bind(this)}
           />
-          <PokemonCard
-            pokemon={find(pokemons, { id: displayedPokemonId })}
-            handleClick={this.updatePokedex.bind(this)}
-          />
+          <PokemonCard pokemon={find(pokemons, { id: displayedPokemonId })} />
         </View>
       )
       : <View />;
