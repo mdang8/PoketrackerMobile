@@ -1,8 +1,9 @@
 import React from 'react';
-import { Button, Image, Text, StyleSheet, ToastAndroid, View } from 'react-native';
+import { ActivityIndicator, Button, Dimensions, Image, Text, StyleSheet, ToastAndroid, View } from 'react-native';
 import { map } from 'lodash';
 import PropTypes from 'prop-types';
 
+const { width, height } = Dimensions.get('window');
 /* eslint-disable object-property-newline */
 // mapping of Pokemon types to their associated hex color codes
 const TYPE_COLORS = {
@@ -20,6 +21,7 @@ export default class PokemonCard extends React.Component {
     this.state = {
       pokemon: props.pokemon,
       location: {},
+      isLoading: false,
     };
   }
 
@@ -40,11 +42,17 @@ export default class PokemonCard extends React.Component {
 
   updatePokedex() {
     const { pokemon } = this.state;
-    this.updateCurrentLocation(() => ToastAndroid.show(`Clicked button for Pokemon with ID = ${pokemon.id}`, ToastAndroid.SHORT));
+    this.setState({ isLoading: true }, () => {
+      this.updateCurrentLocation(() => {
+        this.setState({ isLoading: false }, () => {
+          ToastAndroid.show(`Clicked button for Pokemon with ID = ${pokemon.id}`, ToastAndroid.SHORT);
+        });
+      });
+    });
   }
 
   render() {
-    const { pokemon } = this.state;
+    const { pokemon, isLoading } = this.state;
     // maps each of the Pokemon's types to a type style button
     const types = map(pokemon.types, type => (
       // uses the type colors map to determine the color of the current type
@@ -54,6 +62,13 @@ export default class PokemonCard extends React.Component {
         </Text>
       </View>
     ));
+    const loadingOverlay = (isLoading)
+      ? (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#0000FF" />
+        </View>
+      )
+      : <View />;
 
     return (
       <View style={styles.card}>
@@ -66,9 +81,10 @@ export default class PokemonCard extends React.Component {
             {types}
           </View>
           <View style={{ margin: 10 }}>
-            <Button title="Pokedex" onPress={() => this.updatePokedex(pokemon.id)} style={styles.cardButton} />
+            <Button title="Pokedex" disabled={isLoading} onPress={() => this.updatePokedex(pokemon.id)} style={styles.cardButton} />
           </View>
         </View>
+        {loadingOverlay}
       </View>
     );
   }
@@ -117,4 +133,16 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
+  overlay: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    opacity: 0.3,
+    width: width,
+    height: height,
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
