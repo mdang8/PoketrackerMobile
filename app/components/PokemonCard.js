@@ -1,6 +1,9 @@
 import React from 'react';
-import { Button, Image, Text, StyleSheet, ToastAndroid, View } from 'react-native';
-import { map } from 'lodash';
+import {
+  Button, Image, Text, StyleSheet, ToastAndroid, View
+} from 'react-native';
+import MapView from 'react-native-maps';
+import { find, map } from 'lodash';
 import PropTypes from 'prop-types';
 
 /* eslint-disable object-property-newline */
@@ -18,8 +21,11 @@ class PokemonCard extends React.Component {
     super(props);
 
     this.state = {
-      pokemon: props.pokemon,
-      location: {},
+      pokemons: props.pokemons,
+      currentPokemonId: props.currentPokemonId,
+      latitude: null,
+      longitude: null,
+      pokedexUpdateHandler: props.handlePokedexUpdate,
       loadingHandler: props.handleLoading,
     };
   }
@@ -29,35 +35,35 @@ class PokemonCard extends React.Component {
   }
 
   componentWillReceiveProps(props) {
-    const { pokemon, handleLoading } = props;
-    this.setState({ pokemon, loadingHandler: handleLoading });
+    const { pokemons, currentPokemonId } = props;
+    this.setState({ pokemons, currentPokemonId });
   }
 
   updateCurrentLocation(callback) {
-    navigator.geolocation.getCurrentPosition(location => this.setState({ location }, callback),
+    navigator.geolocation.getCurrentPosition(location => this.setState({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    }, callback),
       error => console.error(error.message),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 });
   }
 
-  updatePokedex() {
-    const { pokemon, loadingHandler } = this.state;
+  updatePokedex(owned) {
+    const { loadingHandler } = this.state;
     loadingHandler();
-    this.updateCurrentLocation(() => {
+    this.updateCurrentLocation(async () => {
+      const {
+        currentPokemonId, latitude, longitude, pokedexUpdateHandler
+      } = this.state;
       loadingHandler();
-      ToastAndroid.show(`Clicked button for Pokemon with ID = ${pokemon.id}`, ToastAndroid.SHORT);
+      await pokedexUpdateHandler(currentPokemonId, owned);
+      ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
     });
-
-    // this.setState({ isLoading: true }, () => {
-    //   this.updateCurrentLocation(() => {
-    //     this.setState({ isLoading: false }, () => {
-    //       ToastAndroid.show(`Clicked button for Pokemon with ID = ${pokemon.id}`, ToastAndroid.SHORT);
-    //     });
-    //   });
-    // });
   }
 
   render() {
-    const { pokemon } = this.state;
+    const { pokemons, currentPokemonId } = this.state;
+    const pokemon = find(pokemons, { id: currentPokemonId });
     // maps each of the Pokemon's types to a type style button
     const types = map(pokemon.types, type => (
       // uses the type colors map to determine the color of the current type
@@ -67,6 +73,8 @@ class PokemonCard extends React.Component {
         </Text>
       </View>
     ));
+    const buttonText = (pokemon.owned) ? 'Remove from Pokédex' : 'Add to Pokédex';
+    const buttonColor = (pokemon.owned) ? '#d82032' : '#29e57d';
 
     return (
       <View style={styles.card}>
@@ -79,7 +87,12 @@ class PokemonCard extends React.Component {
             {types}
           </View>
           <View style={{ margin: 10 }}>
-            <Button title="Pokedex" onPress={() => this.updatePokedex(pokemon.id)} style={styles.cardButton} />
+            <Button
+              title={buttonText}
+              color={buttonColor}
+              onPress={() => this.updatePokedex(!pokemon.owned)}
+              style={styles.cardButton}
+            />
           </View>
         </View>
       </View>
@@ -88,7 +101,9 @@ class PokemonCard extends React.Component {
 }
 
 PokemonCard.propTypes = {
-  pokemon: PropTypes.object.isRequired,
+  pokemons: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentPokemonId: PropTypes.number.isRequired,
+  handlePokedexUpdate: PropTypes.func.isRequired,
   handleLoading: PropTypes.func.isRequired,
 };
 

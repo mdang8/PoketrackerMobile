@@ -1,6 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Dimensions, Platform, StyleSheet, View } from 'react-native';
-import { find } from 'lodash';
+import {
+  ActivityIndicator, Dimensions, StyleSheet, View
+} from 'react-native';
+import { findIndex } from 'lodash';
 import PokemonCard from './PokemonCard';
 import SearchForm from './SearchForm';
 
@@ -40,6 +42,31 @@ class Main extends React.Component {
     });
   }
 
+  // @TODO - add location parameter
+  updatePokedex(pokemonId, owned) {
+    const { pokemons } = this.state;
+    const pokemonIndex = findIndex(pokemons, { id: pokemonId });
+    // @TODO - change URL to production one
+    fetch(`http://192.168.0.118:3000/api/v1/pokemon/${pokemonId}`, {
+      method: 'PUT',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: pokemonId,
+        owned,
+      }),
+    })
+      .then(res => res.json())
+      .then((data) => {
+        console.log(data);
+        pokemons[pokemonIndex].owned = owned;
+        this.setState({ pokemons });
+      })
+      .catch(err => console.error(err));
+  }
+
   render() {
     const { pokemons, displayedPokemonId, isLoading } = this.state;
     const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
@@ -52,7 +79,9 @@ class Main extends React.Component {
             handleChange={id => this.updateDisplayedPokemon(id)}
           />
           <PokemonCard
-            pokemon={find(pokemons, { id: displayedPokemonId })}
+            pokemons={pokemons}
+            currentPokemonId={displayedPokemonId}
+            handlePokedexUpdate={(pokemonId, owned) => this.updatePokedex(pokemonId, owned)}
             handleLoading={() => this.setLoadingState()}
           />
           {LoadingOverlay(isLoading)}
@@ -92,7 +121,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
 });
 
 export default Main;

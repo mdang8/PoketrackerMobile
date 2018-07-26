@@ -1,4 +1,4 @@
 import { AppRegistry } from 'react-native';
-import Main from './components/Main';
+import Main from './app/components/Main';
 
-AppRegistry.registerComponent('PoketrackerMobile', () => Main);
+AppRegistry.registerComponent('PokeTracker', () => Main);
