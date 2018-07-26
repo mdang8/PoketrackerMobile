@@ -19,6 +19,10 @@ class Main extends React.Component {
     };
   }
 
+  /**
+   * Sends a GET request to retrieve all of the Pokemon data from the database when the component
+   * mounts.
+   */
   componentDidMount() {
     // @TODO - change URL to production one
     const url = 'http://192.168.0.118:3000/api/v1/pokemon/all';
@@ -28,21 +32,32 @@ class Main extends React.Component {
       .catch(err => console.error(err));
   }
 
+  /**
+   * Toggles the loading boolean value in the state.
+   */
   setLoadingState() {
     const { isLoading } = this.state;
     this.setState({ isLoading: !isLoading });
   }
 
-  updateDisplayedPokemon(id) {
+  /**
+   * Updates the ID value in the state for the Pokemon to currently display.
+   * @param {number} pokemonId - The ID of the Pokemon to display.
+   */
+  updateDisplayedPokemon(pokemonId) {
     // @TODO - remove this
     console.log('Updating displayed Pokemon.');
 
     this.setState({
-      displayedPokemonId: id,
+      displayedPokemonId: pokemonId,
     });
   }
 
-  // @TODO - add location parameter
+  /**
+   * Sends a PUT request to update the ownership status of the Pokemon with the given ID.
+   * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
+   * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
+   */
   updatePokedex(pokemonId, owned) {
     const { pokemons } = this.state;
     const pokemonIndex = findIndex(pokemons, { id: pokemonId });
@@ -67,9 +82,15 @@ class Main extends React.Component {
       .catch(err => console.error(err));
   }
 
+  /**
+   * Method for rendering the main components on the view and formats any necessary data to pass
+   * to the child components.
+   */
   render() {
     const { pokemons, displayedPokemonId, isLoading } = this.state;
+    // formats the array of Pokemon objects to populate the select dropdown
     const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
+    // renders the main components if the state values are properly set
     const displayedComponents = (pokemons.length !== 0)
       ? (
         <View style={styles.container}>
@@ -93,6 +114,10 @@ class Main extends React.Component {
   }
 }
 
+/**
+ * Returns an overlay with a loading spinner if the given boolean loading value is true.
+ * @param {boolean} isLoading - The boolean value of if the app is currently in a loading status.
+ */
 function LoadingOverlay(isLoading) {
   if (isLoading) {
     return (
