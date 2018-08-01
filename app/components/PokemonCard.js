@@ -2,8 +2,7 @@ import React from 'react';
 import {
   Button, Image, Text, StyleSheet, ToastAndroid, View
 } from 'react-native';
-import MapView from 'react-native-maps';
-import { find, map } from 'lodash';
+import { find } from 'lodash';
 import PropTypes from 'prop-types';
 
 /* eslint-disable object-property-newline */
@@ -48,24 +47,30 @@ class PokemonCard extends React.Component {
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 });
   }
 
-  updatePokedex(owned) {
-    const { loadingHandler } = this.state;
+  async updatePokedex(owned) {
+    const {
+      currentPokemonId, latitude, longitude, pokedexUpdateHandler, loadingHandler
+    } = this.state;
     loadingHandler();
-    this.updateCurrentLocation(async () => {
-      const {
-        currentPokemonId, latitude, longitude, pokedexUpdateHandler
-      } = this.state;
-      loadingHandler();
-      await pokedexUpdateHandler(currentPokemonId, owned);
-      ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
-    });
+    await pokedexUpdateHandler(currentPokemonId, owned);
+    loadingHandler();
+    ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
+
+    // this.updateCurrentLocation(async () => {
+    //   const {
+    //     currentPokemonId, latitude, longitude, pokedexUpdateHandler
+    //   } = this.state;
+    //   loadingHandler();
+    //   await pokedexUpdateHandler(currentPokemonId, owned);
+    //   ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
+    // });
   }
 
   render() {
-    const { pokemons, currentPokemonId } = this.state;
+    const { pokemons, currentPokemonId, pokedexUpdateHandler } = this.state;
     const pokemon = find(pokemons, { id: currentPokemonId });
     // maps each of the Pokemon's types to a type style button
-    const types = map(pokemon.types, type => (
+    const types = pokemon.types.map(type => (
       // uses the type colors map to determine the color of the current type
       <View style={[styles.type, { backgroundColor: TYPE_COLORS[type] }]} key={type}>
         <Text style={styles.typeText}>
@@ -75,7 +80,6 @@ class PokemonCard extends React.Component {
     ));
     const buttonText = (pokemon.owned) ? 'Remove from Pokédex' : 'Add to Pokédex';
     const buttonColor = (pokemon.owned) ? '#d82032' : '#29e57d';
-
     return (
       <View style={styles.card}>
         <Image source={{ uri: pokemon.imageSrc }} style={styles.cardImg} />
@@ -90,7 +94,7 @@ class PokemonCard extends React.Component {
             <Button
               title={buttonText}
               color={buttonColor}
-              onPress={() => this.updatePokedex(!pokemon.owned)}
+              onPress={() => pokedexUpdateHandler(!pokemon.owned)}
               style={styles.cardButton}
             />
           </View>
