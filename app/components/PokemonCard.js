@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Button, Image, Text, StyleSheet, ToastAndroid, View
+  Button, Image, Text, StyleSheet, View
 } from 'react-native';
 import { find } from 'lodash';
 import PropTypes from 'prop-types';
@@ -54,7 +54,6 @@ class PokemonCard extends React.Component {
     loadingHandler();
     await pokedexUpdateHandler(currentPokemonId, owned);
     loadingHandler();
-    // ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
 
     // this.updateCurrentLocation(async () => {
     //   const {

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ActivityIndicator, Alert, Dimensions, StyleSheet, View
+  ActivityIndicator, Alert, Dimensions, StyleSheet, ToastAndroid, View
 } from 'react-native';
 import MapView from 'react-native-maps';
 import { findIndex } from 'lodash';
@@ -36,33 +36,34 @@ class Main extends React.Component {
       .then(res => res.json())
       .then(async (data) => {
         this.setState({ pokemons: data });
-        await this.setLocation(true);
+        await this.setLocation();
       })
       .catch(err => console.error(err));
   }
 
-  setLocation(isHighAccuracy) {
+  setLocation() {
     navigator.geolocation.getCurrentPosition((position) => {
       this.setState({
         isLoading: false,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-      }, console.log('Initial state set.'));
-    },
-    (err) => {
+      }, console.log('Initial location set.'));
+    }, (err) => {
       console.log(err);
+      // displays an alert box informing the user that their location couldn't be found
       Alert.alert(
         'Oops something went wrong!',
-        'Location couldn\'t be found :(\nUsing the default location.',
+        'Problem: Location couldn\'t be found :(\nSolution: Using the default location.',
         [
           { text: 'OK', onPress: () => console.log('OK pressed') },
           // { text: 'Cancel', onPress: () => console.log('Cancel pressed'), style: 'cancel' },
         ],
         { cancelable: true }
       );
-      this.setState({ isLoading: false, latitude: 37.0902, longitude: 95.7129 });
-    },
-    { enableHighAccuracy: isHighAccuracy, timeout: 20000, maximumAge: 120000 });
+      // sets the latitude and longitude values in the state to use the ones for New York City as
+      // default values
+      this.setState({ isLoading: false, latitude: 40.7128, longitude: -74.0060 });
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 });
   }
 
   /**
@@ -99,22 +100,31 @@ class Main extends React.Component {
   handleLocationSelect = (event) => {
     const { markers } = this.state;
     const { coordinate, position } = event.nativeEvent;
+    const { latitude, longitude } = coordinate;
     console.log(position);
     const updatedMarkers = markers.slice();
     updatedMarkers.push({
-      coordinate: {
-        latitude: coordinate.latitude,
-        longitude: coordinate.longitude
-      },
+      coordinate: { latitude, longitude },
       title: 'Pokemon Location',
       description: 'Marker indicating where this Pokemon was found.',
-      identifier: `${coordinate.latitude}${coordinate.longitude}`,
+      identifier: `${latitude}${longitude}`,
     });
+    this.setState({ latitude, longitude, markers: updatedMarkers });
+  }
+
+  removeMarker = (event) => {
+    const { markers } = this.state;
+    const { coordinate, position, id } = event.nativeEvent;
+    // @TODO - remove these log statements
+    console.log(event.nativeEvent);
+    console.log(`Removing marker with ID = ${id}`);
+    // applies a filter to the list of markers to remove the ones with the matching ID
+    const updatedMarkers = markers.slice().filter(marker => marker.identifier !== id);
     this.setState({ markers: updatedMarkers });
   }
 
   sendPokedexUpdateDetails(pokemonId, owned, latitude, longitude) {
-    const { pokemons } = this.state;
+    const { pokemons, displayedPokemonId } = this.state;
     const pokemonsCopy = pokemons.slice();
     const pokemonIndex = findIndex(pokemonsCopy, { id: pokemonId });
     // @TODO - change URL to production one
@@ -135,7 +145,8 @@ class Main extends React.Component {
       .then((data) => {
         console.log(data);
         pokemonsCopy[pokemonIndex].owned = owned;
-        this.setState({ pokemons: pokemonsCopy });
+        this.setState({ pokemons: pokemonsCopy },
+          ToastAndroid.show(`Pokemon with ID = ${displayedPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT));
       })
       .catch(err => console.error(err));
   }
@@ -148,64 +159,80 @@ class Main extends React.Component {
     const {
       pokemons, displayedPokemonId, isLoading, isChoosingLocation, latitude, longitude, markers
     } = this.state;
-    const displayedMarkers = markers.slice().map(marker => (
-      <MapView.Marker key={marker.identifier} coordinate={marker.coordinate} />
-    ));
-    const renderedView = (isChoosingLocation)
+    // renders the main components if the state values are properly set
+    const defaultView = (pokemons.length !== 0)
       ? (
-        <MapView
-          style={styles.container}
-          customMapStyle={RetroMapStyles}
-          region={{
-            latitude,
-            longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-          onPress={e => this.handleLocationSelect(e)}
-        >
-          {displayedMarkers}
-        </MapView>
+        <View style={styles.container}>
+          {determineSearchFormView(pokemons, displayedPokemonId, this.updateDisplayedPokemon)}
+          {
+            determineCardView(
+              pokemons,
+              displayedPokemonId,
+              this.updatePokedex,
+              this.setLoadingState
+            )
+          }
+          {LoadingOverlay(isLoading)}
+        </View>
       )
-      : determineCardView(
-        pokemons,
-        displayedPokemonId,
-        isLoading,
-        this.updateDisplayedPokemon,
-        this.updatePokedex,
-        this.setLoadingState
-      );
+      : null;
+    const renderedView = (isChoosingLocation)
+      ? determineMapView(latitude, longitude, markers, this.handleLocationSelect, this.removeMarker)
+      : defaultView;
 
     return renderedView;
   }
 }
 
-function determineCardView(
-  pokemons, displayedPokemonId, isLoading, updateDisplayedPokemon, updatePokedex, setLoadingState
-) {
+function determineMapView(latitude, longitude, markers, handleLocationSelect, removeMarker) {
+  const displayedMarkers = markers.slice().map(marker => (
+    <MapView.Marker
+      identifier={marker.identifier}
+      key={marker.identifier}
+      coordinate={marker.coordinate}
+      onPress={e => removeMarker(e)}
+    />
+  ));
+
+  return (
+    <MapView
+      style={styles.container}
+      customMapStyle={RetroMapStyles}
+      region={{
+        latitude,
+        longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }}
+      onPress={e => handleLocationSelect(e)}
+    >
+      {displayedMarkers}
+    </MapView>
+  );
+}
+
+function determineSearchFormView(pokemons, displayedPokemonId, updateDisplayedPokemon) {
   // formats the array of Pokemon objects to populate the select dropdown
   const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
-  // renders the main components if the state values are properly set
-  const displayedComponents = (pokemons.length !== 0)
-    ? (
-      <View style={styles.container}>
-        <SearchForm
-          pokemons={pokemonSelects}
-          currentId={displayedPokemonId}
-          handleChange={updateDisplayedPokemon}
-        />
-        <PokemonCard
-          pokemons={pokemons}
-          currentPokemonId={displayedPokemonId}
-          handlePokedexUpdate={updatePokedex}
-          handleLoading={setLoadingState}
-        />
-        {LoadingOverlay(isLoading)}
-      </View>
-    )
-    : <View />;
 
-  return displayedComponents;
+  return (
+    <SearchForm
+      pokemons={pokemonSelects}
+      currentId={displayedPokemonId}
+      handleChange={updateDisplayedPokemon}
+    />
+  );
+}
+
+function determineCardView(pokemons, displayedPokemonId, updatePokedex, setLoadingState) {
+  return (
+    <PokemonCard
+      pokemons={pokemons}
+      currentPokemonId={displayedPokemonId}
+      handlePokedexUpdate={updatePokedex}
+      handleLoading={setLoadingState}
+    />
+  );
 }
 
 /**
