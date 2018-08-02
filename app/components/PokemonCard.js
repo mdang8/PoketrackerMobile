@@ -54,7 +54,7 @@ class PokemonCard extends React.Component {
     loadingHandler();
     await pokedexUpdateHandler(currentPokemonId, owned);
     loadingHandler();
-    ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
+    // ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
 
     // this.updateCurrentLocation(async () => {
     //   const {
@@ -94,7 +94,7 @@ class PokemonCard extends React.Component {
             <Button
               title={buttonText}
               color={buttonColor}
-              onPress={() => pokedexUpdateHandler(!pokemon.owned)}
+              onPress={() => this.updatePokedex(!pokemon.owned)}
               style={styles.cardButton}
             />
           </View>

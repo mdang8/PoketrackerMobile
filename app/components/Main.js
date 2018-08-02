@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ActivityIndicator, Dimensions, StyleSheet, View
+  ActivityIndicator, Alert, Dimensions, StyleSheet, View
 } from 'react-native';
 import MapView from 'react-native-maps';
 import { findIndex } from 'lodash';
@@ -21,6 +21,7 @@ class Main extends React.Component {
       isChoosingLocation: false,
       latitude: null,
       longitude: null,
+      markers: [],
     };
   }
 
@@ -33,25 +34,41 @@ class Main extends React.Component {
     const url = 'http://192.168.1.10:3000/api/v1/pokemon/all';
     fetch(url)
       .then(res => res.json())
-      .then((data) => {
-        navigator.geolocation.getCurrentPosition((position) => {
-          this.setState({
-            pokemons: data,
-            isLoading: false,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          }, console.log('Initial state set.'));
-        },
-          err => console.error(err.message),
-          { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 });
+      .then(async (data) => {
+        this.setState({ pokemons: data });
+        await this.setLocation(true);
       })
       .catch(err => console.error(err));
+  }
+
+  setLocation(isHighAccuracy) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      this.setState({
+        isLoading: false,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }, console.log('Initial state set.'));
+    },
+    (err) => {
+      console.log(err);
+      Alert.alert(
+        'Oops something went wrong!',
+        'Location couldn\'t be found :(\nUsing the default location.',
+        [
+          { text: 'OK', onPress: () => console.log('OK pressed') },
+          // { text: 'Cancel', onPress: () => console.log('Cancel pressed'), style: 'cancel' },
+        ],
+        { cancelable: true }
+      );
+      this.setState({ isLoading: false, latitude: 37.0902, longitude: 95.7129 });
+    },
+    { enableHighAccuracy: isHighAccuracy, timeout: 20000, maximumAge: 120000 });
   }
 
   /**
    * Toggles the loading boolean value in the state.
    */
-  setLoadingState() {
+  setLoadingState = () => {
     const { isLoading } = this.state;
     this.setState({ isLoading: !isLoading });
   }
@@ -60,7 +77,7 @@ class Main extends React.Component {
    * Updates the ID value in the state for the Pokemon to currently display.
    * @param {number} pokemonId - The ID of the Pokemon to display.
    */
-  updateDisplayedPokemon(pokemonId) {
+  updateDisplayedPokemon = (pokemonId) => {
     // @TODO - remove this
     console.log('Updating displayed Pokemon.');
 
@@ -74,9 +91,26 @@ class Main extends React.Component {
    * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
    * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
    */
-  updatePokedex(pokemonId, owned) {
+  updatePokedex = (pokemonId, owned) => {
     // const { pokemons, isChoosingLocation } = this.state;
     this.setState({ isChoosingLocation: true });
+  }
+
+  handleLocationSelect = (event) => {
+    const { markers } = this.state;
+    const { coordinate, position } = event.nativeEvent;
+    console.log(position);
+    const updatedMarkers = markers.slice();
+    updatedMarkers.push({
+      coordinate: {
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude
+      },
+      title: 'Pokemon Location',
+      description: 'Marker indicating where this Pokemon was found.',
+      identifier: `${coordinate.latitude}${coordinate.longitude}`,
+    });
+    this.setState({ markers: updatedMarkers });
   }
 
   sendPokedexUpdateDetails(pokemonId, owned, latitude, longitude) {
@@ -112,8 +146,11 @@ class Main extends React.Component {
    */
   render() {
     const {
-      pokemons, displayedPokemonId, isLoading, isChoosingLocation, latitude, longitude
+      pokemons, displayedPokemonId, isLoading, isChoosingLocation, latitude, longitude, markers
     } = this.state;
+    const displayedMarkers = markers.slice().map(marker => (
+      <MapView.Marker key={marker.identifier} coordinate={marker.coordinate} />
+    ));
     const renderedView = (isChoosingLocation)
       ? (
         <MapView
@@ -125,15 +162,27 @@ class Main extends React.Component {
             latitudeDelta: 0.0922,
             longitudeDelta: 0.0421,
           }}
-        />
+          onPress={e => this.handleLocationSelect(e)}
+        >
+          {displayedMarkers}
+        </MapView>
       )
-      : determineCardView(pokemons, displayedPokemonId, isLoading);
+      : determineCardView(
+        pokemons,
+        displayedPokemonId,
+        isLoading,
+        this.updateDisplayedPokemon,
+        this.updatePokedex,
+        this.setLoadingState
+      );
 
     return renderedView;
   }
 }
 
-function determineCardView(pokemons, displayedPokemonId, isLoading) {
+function determineCardView(
+  pokemons, displayedPokemonId, isLoading, updateDisplayedPokemon, updatePokedex, setLoadingState
+) {
   // formats the array of Pokemon objects to populate the select dropdown
   const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
   // renders the main components if the state values are properly set
@@ -143,13 +192,13 @@ function determineCardView(pokemons, displayedPokemonId, isLoading) {
         <SearchForm
           pokemons={pokemonSelects}
           currentId={displayedPokemonId}
-          handleChange={id => this.updateDisplayedPokemon(id)}
+          handleChange={updateDisplayedPokemon}
         />
         <PokemonCard
           pokemons={pokemons}
           currentPokemonId={displayedPokemonId}
-          handlePokedexUpdate={(pokemonId, owned) => this.updatePokedex(pokemonId, owned)}
-          handleLoading={() => this.setLoadingState()}
+          handlePokedexUpdate={updatePokedex}
+          handleLoading={setLoadingState}
         />
         {LoadingOverlay(isLoading)}
       </View>
