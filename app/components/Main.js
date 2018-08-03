@@ -26,8 +26,8 @@ class Main extends React.Component {
   }
 
   /**
-   * Sends a GET request to retrieve all of the Pokemon data from the database when the component
-   * mounts.
+   * Sends a GET request to retrieve all of the Pokemon data from the database and then makes a
+   * call to @method setLocation to set the initial location when the component mounts.
    */
   componentDidMount() {
     // @TODO - change URL to production one
@@ -41,6 +41,10 @@ class Main extends React.Component {
       .catch(err => console.error(err));
   }
 
+  /**
+   * Retrieves the current location and sets the relevant values in the state. If the location
+   * retrieval fails, then a default location is used.
+   */
   setLocation() {
     navigator.geolocation.getCurrentPosition((position) => {
       this.setState({
@@ -88,7 +92,7 @@ class Main extends React.Component {
   }
 
   /**
-   * Sends a PUT request to update the ownership status of the Pokemon with the given ID.
+   * Sets the isChoosingLocation value in the state to render the map view.
    * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
    * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
    */
@@ -97,6 +101,11 @@ class Main extends React.Component {
     this.setState({ isChoosingLocation: true });
   }
 
+  /**
+   * Handles when the map is pressed. Adds a marker to the list of markers in the state to be
+   * rendered on the map view.
+   * @param {Object} event - The event that gets returned from the onPress function of MapView.
+   */
   handleLocationSelect = (event) => {
     const { markers } = this.state;
     const { coordinate, position } = event.nativeEvent;
@@ -112,6 +121,10 @@ class Main extends React.Component {
     this.setState({ latitude, longitude, markers: updatedMarkers });
   }
 
+  /**
+   * Removes the marker with the matching ID as the one in the given @param event.
+   * @param {Object} event - The event that gets returned from the onPress function of Marker.
+   */
   removeMarker = (event) => {
     const { markers } = this.state;
     const { coordinate, position, id } = event.nativeEvent;
@@ -123,6 +136,13 @@ class Main extends React.Component {
     this.setState({ markers: updatedMarkers });
   }
 
+  /**
+   * Sends a PUT request to update the ownership status of the Pokemon with the given ID.
+   * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
+   * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
+   * @param {number} latitude - The latitude coordinate value.
+   * @param {number} longitude - The longitude coordinate value.
+   */
   sendPokedexUpdateDetails(pokemonId, owned, latitude, longitude) {
     const { pokemons, displayedPokemonId } = this.state;
     const pokemonsCopy = pokemons.slice();
@@ -184,7 +204,16 @@ class Main extends React.Component {
   }
 }
 
+/**
+ * Determines the map view to render with the markers.
+ * @param {number} latitude - The latitude coordinate value.
+ * @param {number} longitude - The longitude coordinate value.
+ * @param {Object[]} markers - The list of markers to render on the map.
+ * @param {Function} handleLocationSelect - The function to handle location selection.
+ * @param {Function} removeMarker - The function to handle marker removals.
+ */
 function determineMapView(latitude, longitude, markers, handleLocationSelect, removeMarker) {
+  // applies a map to the list of marker objects to build a list of renderable MapView Markers
   const displayedMarkers = markers.slice().map(marker => (
     <MapView.Marker
       identifier={marker.identifier}
@@ -211,6 +240,13 @@ function determineMapView(latitude, longitude, markers, handleLocationSelect, re
   );
 }
 
+/**
+ * Determines the search form view to render.
+ * @param {Object[]} pokemons - The list of all the Pokemon objects.
+ * @param {number} displayedPokemonId - The ID of the Pokemon that is currently displayed.
+ * @param {Function} updateDisplayedPokemon - The function to handle updating the currently
+ * displayed Pokemon.
+ */
 function determineSearchFormView(pokemons, displayedPokemonId, updateDisplayedPokemon) {
   // formats the array of Pokemon objects to populate the select dropdown
   const pokemonSelects = pokemons.map(pokemon => ({ id: pokemon.id, name: pokemon.name }));
@@ -224,6 +260,13 @@ function determineSearchFormView(pokemons, displayedPokemonId, updateDisplayedPo
   );
 }
 
+/**
+ * Determines the Pokemon card view to render.
+ * @param {Object[]} pokemons - The list of all the Pokemon objects.
+ * @param {number} displayedPokemonId - The ID of the Pokemon that is currently displayed.
+ * @param {Function} updatePokedex - The function to handle updating the Pokedex.
+ * @param {Function} setLoadingState - The function to handle setting the loading status.
+ */
 function determineCardView(pokemons, displayedPokemonId, updatePokedex, setLoadingState) {
   return (
     <PokemonCard
