@@ -38,35 +38,17 @@ class PokemonCard extends React.Component {
     this.setState({ pokemons, currentPokemonId });
   }
 
-  updateCurrentLocation(callback) {
-    navigator.geolocation.getCurrentPosition(location => this.setState({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    }, callback),
-      error => console.error(error.message),
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 });
-  }
-
   async updatePokedex(owned) {
     const {
-      currentPokemonId, latitude, longitude, pokedexUpdateHandler, loadingHandler
+      currentPokemonId, pokedexUpdateHandler, loadingHandler
     } = this.state;
     loadingHandler();
     await pokedexUpdateHandler(currentPokemonId, owned);
     loadingHandler();
-
-    // this.updateCurrentLocation(async () => {
-    //   const {
-    //     currentPokemonId, latitude, longitude, pokedexUpdateHandler
-    //   } = this.state;
-    //   loadingHandler();
-    //   await pokedexUpdateHandler(currentPokemonId, owned);
-    //   ToastAndroid.show(`Pokemon with ID = ${currentPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT);
-    // });
   }
 
   render() {
-    const { pokemons, currentPokemonId, pokedexUpdateHandler } = this.state;
+    const { pokemons, currentPokemonId } = this.state;
     const pokemon = find(pokemons, { id: currentPokemonId });
     // maps each of the Pokemon's types to a type style button
     const types = pokemon.types.map(type => (

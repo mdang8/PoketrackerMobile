@@ -9,6 +9,8 @@ import SearchForm from './SearchForm';
 import RetroMapStyles from '../styles/RetroMapStyles.json';
 
 const { width, height } = Dimensions.get('window');
+const LATITUDE_DELTA = 0.0922;
+const LONGITUDE_DELTA = LATITUDE_DELTA * (width / height);
 
 class Main extends React.Component {
   constructor(props) {
@@ -19,8 +21,12 @@ class Main extends React.Component {
       displayedPokemonId: 1,
       isLoading: true,
       isChoosingLocation: false,
-      latitude: null,
-      longitude: null,
+      region: {
+        latitude: 0,
+        longitude: 0,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA,
+      },
       markers: [],
     };
   }
@@ -31,7 +37,7 @@ class Main extends React.Component {
    */
   componentDidMount() {
     // @TODO - change URL to production one
-    const url = 'http://192.168.1.10:3000/api/v1/pokemon/all';
+    const url = 'http://192.168.0.118:3000/api/v1/pokemon/all';
     fetch(url)
       .then(res => res.json())
       .then(async (data) => {
@@ -46,11 +52,15 @@ class Main extends React.Component {
    * retrieval fails, then a default location is used.
    */
   setLocation() {
+    const { region } = this.state;
     navigator.geolocation.getCurrentPosition((position) => {
       this.setState({
         isLoading: false,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        region: {
+          ...region,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        },
       }, console.log('Initial location set.'));
     }, (err) => {
       console.log(err);
@@ -66,7 +76,14 @@ class Main extends React.Component {
       );
       // sets the latitude and longitude values in the state to use the ones for New York City as
       // default values
-      this.setState({ isLoading: false, latitude: 40.7128, longitude: -74.0060 });
+      this.setState({
+        isLoading: false,
+        region: {
+          ...region,
+          latitude: 40.7128,
+          longitude: -74.0060,
+        },
+      });
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 });
   }
 
@@ -107,7 +124,7 @@ class Main extends React.Component {
    * @param {Object} event - The event that gets returned from the onPress function of MapView.
    */
   handleLocationSelect = (event) => {
-    const { markers } = this.state;
+    const { region, markers } = this.state;
     const { coordinate, position } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
     console.log(position);
@@ -118,7 +135,7 @@ class Main extends React.Component {
       description: 'Marker indicating where this Pokemon was found.',
       identifier: `${latitude}${longitude}`,
     });
-    this.setState({ latitude, longitude, markers: updatedMarkers });
+    this.setState({ region: { ...region, latitude, longitude, }, markers: updatedMarkers });
   }
 
   /**
@@ -134,6 +151,10 @@ class Main extends React.Component {
     // applies a filter to the list of markers to remove the ones with the matching ID
     const updatedMarkers = markers.slice().filter(marker => marker.identifier !== id);
     this.setState({ markers: updatedMarkers });
+  }
+
+  changeRegion = (newRegion) => {
+    this.setState({ region: newRegion });
   }
 
   /**
@@ -177,8 +198,9 @@ class Main extends React.Component {
    */
   render() {
     const {
-      pokemons, displayedPokemonId, isLoading, isChoosingLocation, latitude, longitude, markers
+      pokemons, displayedPokemonId, isLoading, isChoosingLocation, region, markers
     } = this.state;
+    const { latitude, longitude } = region;
     // renders the main components if the state values are properly set
     const defaultView = (pokemons.length !== 0)
       ? (
@@ -197,7 +219,7 @@ class Main extends React.Component {
       )
       : null;
     const renderedView = (isChoosingLocation)
-      ? determineMapView(latitude, longitude, markers, this.handleLocationSelect, this.removeMarker)
+      ? determineMapView(region, markers, this.handleLocationSelect, this.removeMarker)
       : defaultView;
 
     return renderedView;
@@ -212,7 +234,7 @@ class Main extends React.Component {
  * @param {Function} handleLocationSelect - The function to handle location selection.
  * @param {Function} removeMarker - The function to handle marker removals.
  */
-function determineMapView(latitude, longitude, markers, handleLocationSelect, removeMarker) {
+function determineMapView(region, markers, handleLocationSelect, removeMarker) {
   // applies a map to the list of marker objects to build a list of renderable MapView Markers
   const displayedMarkers = markers.slice().map(marker => (
     <MapView.Marker
@@ -227,12 +249,8 @@ function determineMapView(latitude, longitude, markers, handleLocationSelect, re
     <MapView
       style={styles.container}
       customMapStyle={RetroMapStyles}
-      region={{
-        latitude,
-        longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      }}
+      showsUserLocation
+      region={region}
       onPress={e => handleLocationSelect(e)}
     >
       {displayedMarkers}
