@@ -22,8 +22,6 @@ class PokemonCard extends React.Component {
     this.state = {
       pokemons: props.pokemons,
       currentPokemonId: props.currentPokemonId,
-      latitude: null,
-      longitude: null,
       pokedexUpdateHandler: props.handlePokedexUpdate,
       loadingHandler: props.handleLoading,
     };
@@ -38,12 +36,13 @@ class PokemonCard extends React.Component {
     this.setState({ pokemons, currentPokemonId });
   }
 
-  async updatePokedex(owned) {
+  updatePokedex = async () => {
     const {
-      currentPokemonId, pokedexUpdateHandler, loadingHandler
+      pokemons, currentPokemonId, pokedexUpdateHandler, loadingHandler
     } = this.state;
+    const pokemon = find(pokemons, { id: currentPokemonId });
     loadingHandler();
-    await pokedexUpdateHandler(currentPokemonId, owned);
+    await pokedexUpdateHandler(!pokemon.owned, { latitude: 0, longitude: 0 });
     loadingHandler();
   }
 
@@ -75,7 +74,7 @@ class PokemonCard extends React.Component {
             <Button
               title={buttonText}
               color={buttonColor}
-              onPress={() => this.updatePokedex(!pokemon.owned)}
+              onPress={this.updatePokedex}
               style={styles.cardButton}
             />
           </View>

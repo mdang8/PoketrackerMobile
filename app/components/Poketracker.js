@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ActivityIndicator, Alert, Dimensions, StyleSheet, ToastAndroid, View
+  ActivityIndicator, Alert, Dimensions, StyleSheet, Text, ToastAndroid, TouchableOpacity, View
 } from 'react-native';
 import MapView from 'react-native-maps';
 import { findIndex } from 'lodash';
@@ -12,7 +12,7 @@ const { width, height } = Dimensions.get('window');
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * (width / height);
 
-class Main extends React.Component {
+class Poketracker extends React.Component {
   constructor(props) {
     super(props);
 
@@ -113,9 +113,16 @@ class Main extends React.Component {
    * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
    * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
    */
-  updatePokedex = (pokemonId, owned) => {
-    // const { pokemons, isChoosingLocation } = this.state;
-    this.setState({ isChoosingLocation: true });
+  updatePokedex = async (owned, region) => {
+    const { pokemons, displayedPokemonId } = this.state;
+    const pokemon = pokemons.find(p => p.id === displayedPokemonId);
+
+    if (owned) {
+      this.setState({ isChoosingLocation: true });
+    } else {
+      const updatedPokemons = await sendPokedexUpdateDetails(displayedPokemonId, owned, region);
+      this.setState({ pokemons: updatedPokemons }, console.log('Pokemon updated'));
+    }
   }
 
   /**
@@ -123,7 +130,7 @@ class Main extends React.Component {
    * rendered on the map view.
    * @param {Object} event - The event that gets returned from the onPress function of MapView.
    */
-  handleLocationSelect = (event) => {
+  addMarker = (event) => {
     const { region, markers } = this.state;
     const { coordinate, position } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
@@ -153,45 +160,6 @@ class Main extends React.Component {
     this.setState({ markers: updatedMarkers });
   }
 
-  changeRegion = (newRegion) => {
-    this.setState({ region: newRegion });
-  }
-
-  /**
-   * Sends a PUT request to update the ownership status of the Pokemon with the given ID.
-   * @param {number} pokemonId - The ID of the Pokemon to update in the Pokedex.
-   * @param {boolean} owned - The boolean value to be updated of if the Pokemon is owned.
-   * @param {number} latitude - The latitude coordinate value.
-   * @param {number} longitude - The longitude coordinate value.
-   */
-  sendPokedexUpdateDetails(pokemonId, owned, latitude, longitude) {
-    const { pokemons, displayedPokemonId } = this.state;
-    const pokemonsCopy = pokemons.slice();
-    const pokemonIndex = findIndex(pokemonsCopy, { id: pokemonId });
-    // @TODO - change URL to production one
-    fetch(`http://192.168.0.118:3000/api/v1/pokemon/${pokemonId}`, {
-      method: 'PUT',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: pokemonId,
-        owned,
-        latitude,
-        longitude,
-      }),
-    })
-      .then(res => res.json())
-      .then((data) => {
-        console.log(data);
-        pokemonsCopy[pokemonIndex].owned = owned;
-        this.setState({ pokemons: pokemonsCopy },
-          ToastAndroid.show(`Pokemon with ID = ${displayedPokemonId} found at { lat: ${latitude}, long: ${longitude} }`, ToastAndroid.SHORT));
-      })
-      .catch(err => console.error(err));
-  }
-
   /**
    * Method for rendering the main components on the view and formats any necessary data to pass
    * to the child components.
@@ -200,7 +168,6 @@ class Main extends React.Component {
     const {
       pokemons, displayedPokemonId, isLoading, isChoosingLocation, region, markers
     } = this.state;
-    const { latitude, longitude } = region;
     // renders the main components if the state values are properly set
     const defaultView = (pokemons.length !== 0)
       ? (
@@ -219,11 +186,40 @@ class Main extends React.Component {
       )
       : null;
     const renderedView = (isChoosingLocation)
-      ? determineMapView(region, markers, this.handleLocationSelect, this.removeMarker)
+      ? determineMapView(displayedPokemonId, region, markers, this.addMarker, this.removeMarker)
       : defaultView;
 
     return renderedView;
   }
+}
+
+function sendPokedexUpdateDetails(id, owned, region) {
+  const { latitude, longitude } = region;
+  const toastMessage = (owned)
+    ? `Pokemon with ID = ${id} found at { lat: ${latitude}, long: ${longitude} }`
+    : `Pokemon with ID = ${id} removed from Pokedex`;
+
+  // @TODO - change URL to production one
+  return fetch(`http://192.168.0.118:3000/api/v1/pokemon/${id}`, {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id,
+      owned,
+      latitude,
+      longitude,
+    }),
+  })
+    .then(res => res.json())
+    .then((data) => {
+      ToastAndroid.show(toastMessage, ToastAndroid.SHORT);
+
+      return data;
+    })
+    .catch(err => console.error(err));
 }
 
 /**
@@ -231,10 +227,10 @@ class Main extends React.Component {
  * @param {number} latitude - The latitude coordinate value.
  * @param {number} longitude - The longitude coordinate value.
  * @param {Object[]} markers - The list of markers to render on the map.
- * @param {Function} handleLocationSelect - The function to handle location selection.
+ * @param {Function} addMarker - The function to handle location selection.
  * @param {Function} removeMarker - The function to handle marker removals.
  */
-function determineMapView(region, markers, handleLocationSelect, removeMarker) {
+function determineMapView(pokemonId, region, markers, addMarker, removeMarker) {
   // applies a map to the list of marker objects to build a list of renderable MapView Markers
   const displayedMarkers = markers.slice().map(marker => (
     <MapView.Marker
@@ -246,15 +242,30 @@ function determineMapView(region, markers, handleLocationSelect, removeMarker) {
   ));
 
   return (
-    <MapView
-      style={styles.container}
-      customMapStyle={RetroMapStyles}
-      showsUserLocation
-      region={region}
-      onPress={e => handleLocationSelect(e)}
-    >
-      {displayedMarkers}
-    </MapView>
+    <View style={styles.mapContainer}>
+      <MapView
+        style={styles.container}
+        customMapStyle={RetroMapStyles}
+        showsUserLocation
+        region={region}
+        onPress={e => addMarker(e)}
+      >
+        {displayedMarkers}
+      </MapView>
+      <View style={styles.mapExtrasContainer}>
+        <View style={styles.mapButton}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            disabled={markers.length === 0}
+            onPress={() => sendPokedexUpdateDetails(pokemonId, true, markers[0].coordinate)}
+          >
+            <Text style={styles.mapButtonText}>
+              Select Location
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -329,6 +340,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  mapContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  mapExtrasContainer: {
+    alignItems: 'center',
+  },
+  mapButton: {
+    width: '60%',
+    height: 40,
+    bottom: 25,
+    position: 'absolute',
+    elevation: 1,
+    backgroundColor: '#ED533B',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.75,
+    shadowRadius: 1,
+    shadowColor: 'gray',
+    shadowOffset: { height: 0, width: 0 },
+  },
+  mapButtonText: {
+    color: 'white',
+    fontSize: 20,
+  },
 });
 
-export default Main;
+export default Poketracker;
