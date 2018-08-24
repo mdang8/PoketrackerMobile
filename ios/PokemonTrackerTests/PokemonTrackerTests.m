@@ -14,11 +14,11 @@
 #define TIMEOUT_SECONDS 600
 #define TEXT_TO_LOOK_FOR @"Welcome to React Native!"
 
-@interface PoketrackerMobileTests : XCTestCase
+@interface PoketrackerTests : XCTestCase
 
 @end
 
-@implementation PoketrackerMobileTests
+@implementation PoketrackerTests
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL(^)(UIView *view))test
 {
